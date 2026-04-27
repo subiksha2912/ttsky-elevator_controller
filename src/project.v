@@ -11,25 +11,46 @@ module tt_um_elevator_controller (
     input  wire       rst_n
 );
 
-  // Extract inputs
-  wire [1:0] current_floor = ui_in[1:0];
-  wire [1:0] target_floor  = ui_in[3:2];
+    // -----------------------------
+    // INPUT MAPPING
+    // -----------------------------
+    wire [1:0] request_floor = ui_in[1:0];
+    wire request_valid       = ui_in[2];
 
-  // Logic
-  wire up   = (target_floor > current_floor);
-  wire down = (target_floor < current_floor);
-  wire idle = (target_floor == current_floor);
+    // -----------------------------
+    // INTERNAL SIGNALS
+    // -----------------------------
+    wire [1:0] current_floor;
+    wire moving_up;
+    wire moving_down;
+    wire door_open;
 
-  // Assign outputs
-  assign uo_out[0] = up;
-  assign uo_out[1] = down;
-  assign uo_out[2] = idle;
-  assign uo_out[7:3] = 0;
+    // -----------------------------
+    // INSTANTIATE YOUR FSM
+    // -----------------------------
+    elevator_controller core (
+        .clk(clk),
+        .reset(~rst_n),
+        .request_floor(request_floor),
+        .request_valid(request_valid),
+        .current_floor(current_floor),
+        .moving_up(moving_up),
+        .moving_down(moving_down),
+        .door_open(door_open)
+    );
 
-  // Not used
-  assign uio_out = 0;
-  assign uio_oe  = 0;
+    // -----------------------------
+    // OUTPUT MAPPING
+    // -----------------------------
+    assign uo_out[1:0] = current_floor;
+    assign uo_out[2]   = moving_up;
+    assign uo_out[3]   = moving_down;
+    assign uo_out[4]   = door_open;
+    assign uo_out[7:5] = 0;
 
-  wire _unused = &{ena, clk, rst_n, uio_in};
+    assign uio_out = 0;
+    assign uio_oe  = 0;
+
+    wire _unused = &{ena, uio_in};
 
 endmodule
