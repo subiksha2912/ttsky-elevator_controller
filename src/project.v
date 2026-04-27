@@ -1,7 +1,7 @@
 `default_nettype none
 
 //--------------------------------------
-// TOP MODULE (TinyTapeout)
+// TOP MODULE (TinyTapeout Wrapper)
 //--------------------------------------
 module tt_um_elevator_controller (
     input  wire [7:0] ui_in,
@@ -14,17 +14,23 @@ module tt_um_elevator_controller (
     input  wire       rst_n
 );
 
-    // INPUTS
+    // -----------------------------
+    // INPUT MAPPING
+    // -----------------------------
     wire [1:0] request_floor = ui_in[1:0];
     wire request_valid       = ui_in[2];
 
+    // -----------------------------
     // INTERNAL SIGNALS
+    // -----------------------------
     wire [1:0] current_floor;
     wire moving_up;
     wire moving_down;
     wire door_open;
 
-    // CORE
+    // -----------------------------
+    // CORE FSM
+    // -----------------------------
     elevator_controller core (
         .clk(clk),
         .reset(~rst_n),
@@ -36,7 +42,9 @@ module tt_um_elevator_controller (
         .door_open(door_open)
     );
 
-    // OUTPUTS
+    // -----------------------------
+    // OUTPUT MAPPING
+    // -----------------------------
     assign uo_out[1:0] = current_floor;
     assign uo_out[2]   = moving_up;
     assign uo_out[3]   = moving_down;
@@ -46,13 +54,14 @@ module tt_um_elevator_controller (
     assign uio_out = 8'b0;
     assign uio_oe  = 8'b0;
 
+    // Prevent unused warnings
     wire _unused = &{ena, uio_in, ui_in[7:3], 1'b0};
 
 endmodule
 
 
 //--------------------------------------
-// YOUR FSM (ADD THIS!)
+// ELEVATOR CONTROLLER FSM
 //--------------------------------------
 module elevator_controller (
     input clk,
@@ -65,8 +74,9 @@ module elevator_controller (
     output reg door_open
 );
 
-    parameter IDLE = 2'b00,
-              MOVE_UP = 2'b01,
+    // States
+    parameter IDLE      = 2'b00,
+              MOVE_UP   = 2'b01,
               MOVE_DOWN = 2'b10;
 
     reg [1:0] state;
@@ -80,40 +90,60 @@ module elevator_controller (
             moving_up <= 0;
             moving_down <= 0;
             door_open <= 0;
-        end else begin
+        end 
+        else begin
+            // Default outputs
             moving_up <= 0;
             moving_down <= 0;
             door_open <= 0;
 
             case (state)
 
+                //----------------------------------
+                // IDLE STATE
+                //----------------------------------
                 IDLE: begin
+                    door_open <= 1; // door open when idle
+
                     if (request_valid) begin
                         target_floor <= request_floor;
+                        door_open <= 0;
 
                         if (request_floor > current_floor)
                             state <= MOVE_UP;
                         else if (request_floor < current_floor)
                             state <= MOVE_DOWN;
                         else
-                            door_open <= 1;
+                            door_open <= 1; // already there
                     end
                 end
 
+                //----------------------------------
+                // MOVE UP
+                //----------------------------------
                 MOVE_UP: begin
                     moving_up <= 1;
-                    current_floor <= current_floor + 1;
 
-                    if (current_floor + 1 == target_floor)
+                    if (current_floor == target_floor) begin
                         state <= IDLE;
+                    end 
+                    else begin
+                        current_floor <= current_floor + 1;
+                    end
                 end
 
+                //----------------------------------
+                // MOVE DOWN
+                //----------------------------------
                 MOVE_DOWN: begin
                     moving_down <= 1;
-                    current_floor <= current_floor - 1;
 
-                    if (current_floor - 1 == target_floor)
+                    if (current_floor == target_floor) begin
                         state <= IDLE;
+                    end 
+                    else begin
+                        current_floor <= current_floor - 1;
+                    end
                 end
 
             endcase
