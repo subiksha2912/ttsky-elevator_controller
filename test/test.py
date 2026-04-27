@@ -5,9 +5,8 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_elevator(dut):
-    dut._log.info("🚀 Starting Elevator Test")
+    dut._log.info("🚀 Starting Elevator FSM Test")
 
-    # Clock
     clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
 
@@ -15,71 +14,44 @@ async def test_elevator(dut):
     dut.ena.value = 1
     dut.rst_n.value = 0
     dut.ui_in.value = 0
-    dut.uio_in.value = 0
 
     await ClockCycles(dut.clk, 5)
     dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 1)
 
-    # -------------------------
-    # TEST 1: MOVE UP
-    # current = 0, target = 2
-    # -------------------------
-    dut._log.info("⬆️ Test: Move Up")
+    # --------------------------------
+    # REQUEST: GO TO FLOOR 2
+    # --------------------------------
+    dut._log.info("Request floor 2")
 
-    current = 0
-    target = 2
-    dut.ui_in.value = (target << 2) | current
+    dut.ui_in.value = (1 << 2) | 2   # valid=1, floor=2
 
     await ClockCycles(dut.clk, 1)
+
+    # REMOVE request (important)
+    dut.ui_in.value = 0
+
+    # --------------------------------
+    # WAIT FOR MOVEMENT
+    # --------------------------------
+    await ClockCycles(dut.clk, 5)
 
     out = dut.uo_out.value.integer
-    up   = (out >> 0) & 1
-    down = (out >> 1) & 1
-    idle = (out >> 2) & 1
 
-    assert up == 1, "UP should be 1"
-    assert down == 0, "DOWN should be 0"
-    assert idle == 0, "IDLE should be 0"
+    moving_up = (out >> 2) & 1
 
-    # -------------------------
-    # TEST 2: MOVE DOWN
-    # -------------------------
-    dut._log.info("⬇️ Test: Move Down")
+    assert moving_up == 1, "Elevator should move UP"
 
-    current = 3
-    target = 1
-    dut.ui_in.value = (target << 2) | current
-
-    await ClockCycles(dut.clk, 1)
+    # --------------------------------
+    # WAIT UNTIL REACH FLOOR
+    # --------------------------------
+    await ClockCycles(dut.clk, 5)
 
     out = dut.uo_out.value.integer
-    up   = (out >> 0) & 1
-    down = (out >> 1) & 1
-    idle = (out >> 2) & 1
 
-    assert up == 0
-    assert down == 1
-    assert idle == 0
+    floor = out & 0b11
+    door  = (out >> 4) & 1
 
-    # -------------------------
-    # TEST 3: IDLE
-    # -------------------------
-    dut._log.info("⏸️ Test: Idle")
+    assert floor == 2, "Should reach floor 2"
+    assert door == 1, "Door should open"
 
-    current = 2
-    target = 2
-    dut.ui_in.value = (target << 2) | current
-
-    await ClockCycles(dut.clk, 1)
-
-    out = dut.uo_out.value.integer
-    up   = (out >> 0) & 1
-    down = (out >> 1) & 1
-    idle = (out >> 2) & 1
-
-    assert up == 0
-    assert down == 0
-    assert idle == 1
-
-    dut._log.info("✅ ALL TESTS PASSED")
+    dut._log.info("✅ TEST PASSED")
