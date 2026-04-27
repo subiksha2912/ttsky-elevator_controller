@@ -1,8 +1,7 @@
 name: docs
 
 on:
-  push:
-  workflow_dispatch:
+  workflow_dispatch:   # ❗ Only manual trigger (FIX)
 
 jobs:
   docs:
