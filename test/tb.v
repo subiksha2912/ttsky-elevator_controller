@@ -22,7 +22,7 @@ module tb;
   wire VGND = 1'b0;
 `endif
 
-  tt_um_elevator_controller uut (
+  tt_um_elevator_controller user_project (
 `ifdef GL_TEST
     .VPWR(VPWR),
     .VGND(VGND),
