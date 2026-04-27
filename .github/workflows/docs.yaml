@@ -1,16 +1,14 @@
 name: docs
 
 on:
-  workflow_dispatch:   # ❗ Only manual trigger (FIX)
+  workflow_dispatch   # ONLY manual trigger
 
 jobs:
   docs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
+        uses: actions/checkout@v4
 
       - name: Build docs
         uses: TinyTapeout/tt-gds-action/docs@ttsky26a
