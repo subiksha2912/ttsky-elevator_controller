@@ -1,7 +1,7 @@
-`timescale 1ns/1ps
+
 `default_nettype none
 
-module tb_tt_um_example;
+module tb;
 
     reg  [7:0] ui_in;
     wire [7:0] uo_out;
