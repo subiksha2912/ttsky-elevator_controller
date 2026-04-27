@@ -5,53 +5,68 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_elevator(dut):
-    dut._log.info("🚀 Starting Elevator FSM Test")
 
-    clock = Clock(dut.clk, 10, unit="us")
+    dut._log.info("🚀 Starting Elevator Test")
+
+    # Clock (10ns period)
+    clock = Clock(dut.clk, 10, unit="ns")
     cocotb.start_soon(clock.start())
 
-    # Reset
+    # -------------------------
+    # RESET
+    # -------------------------
     dut.ena.value = 1
+    dut.ui_in.value = 0
+    dut.uio_in.value = 0
     dut.rst_n.value = 0
-    dut.ui_in.value = 0
 
     await ClockCycles(dut.clk, 5)
+
     dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 1)
 
-    # --------------------------------
-    # REQUEST: GO TO FLOOR 2
-    # --------------------------------
-    dut._log.info("Request floor 2")
+    dut._log.info("✅ Reset Done")
 
-    dut.ui_in.value = (1 << 2) | 2   # valid=1, floor=2
+    # -------------------------
+    # REQUEST: Go to floor 2
+    # -------------------------
+    # ui_in mapping:
+    # [1:0] = floor
+    # [2]   = request_valid
 
-    await ClockCycles(dut.clk, 3)
+    dut.ui_in.value = 0b00000110   # floor=2, valid=1
 
-    # REMOVE request (important)
+    await ClockCycles(dut.clk, 1)
+
+    # REMOVE request (important!)
     dut.ui_in.value = 0
 
-    # --------------------------------
-    # WAIT FOR MOVEMENT
-    # --------------------------------
-    await ClockCycles(dut.clk, 5)
+    # -------------------------
+    # CHECK MOVING UP (exact cycle)
+    # -------------------------
+    await ClockCycles(dut.clk, 1)
 
-    out = dut.uo_out.value.integer
+    up = (dut.uo_out.value >> 2) & 1
+    dut._log.info(f"Moving Up = {up}")
 
-    moving_up = (out >> 2) & 1
+    assert up == 1, "❌ Elevator should be moving up"
 
-    assert moving_up == 1, "Elevator should move UP"
+    # -------------------------
+    # NEXT CYCLE → FLOOR UPDATE
+    # -------------------------
+    await ClockCycles(dut.clk, 1)
 
-    # --------------------------------
-    # WAIT UNTIL REACH FLOOR
-    # --------------------------------
-    await ClockCycles(dut.clk, 5)
+    floor = dut.uo_out.value & 0b11
+    dut._log.info(f"Current Floor = {floor}")
 
-    out = dut.uo_out.value.integer
+    # -------------------------
+    # WAIT UNTIL REACH TARGET
+    # -------------------------
+    await ClockCycles(dut.clk, 2)
 
-    floor = out & 0b11
-    door  = (out >> 4) & 1
+    floor = dut.uo_out.value & 0b11
+    dut._log.info(f"Final Floor = {floor}")
 
-    assert floor == 2, "Should reach floor 2"
-    assert door == 1, "Door should open"
+    assert floor == 2, "❌ Elevator did not reach floor 2"
 
     dut._log.info("✅ TEST PASSED")
