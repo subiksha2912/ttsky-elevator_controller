@@ -25,7 +25,7 @@ async def test_elevator(dut):
 
     dut.ui_in.value = (1 << 2) | 2   # valid=1, floor=2
 
-    await ClockCycles(dut.clk, 1)
+    await ClockCycles(dut.clk, 3)
 
     # REMOVE request (important)
     dut.ui_in.value = 0
