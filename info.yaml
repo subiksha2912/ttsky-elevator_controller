@@ -11,7 +11,7 @@ project:
   tiles: "1x1"
 
   # Top module (ensure this matches your Verilog file)
-  top_module:  "tt_um_example"
+  top_module:  "tt_um_elevator_controller"
 
   # Source files (must exist in ./src)
   source_files:
