@@ -5,58 +5,54 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_elevator(dut):
-
-    dut._log.info("🚀 Elevator Test Start")
+    dut._log.info("🚀 Starting Elevator Test")
 
     # Clock
-    clock = Clock(dut.clk, 10, unit="ns")
+    clock = Clock(dut.clk, 10, unit="us")
     cocotb.start_soon(clock.start())
 
-    # ---------------- RESET ----------------
+    # Reset
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-
     await ClockCycles(dut.clk, 5)
-
     dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 1)
 
     dut._log.info("✅ Reset Done")
 
-    # ---------------- REQUEST FLOOR 2 ----------------
-    # ui_in[1:0] = floor
-    # ui_in[2]   = valid
+    # -------------------------------
+    # TEST: Move from floor 0 → 2
+    # -------------------------------
 
-    dut.ui_in.value = 0b00000110   # floor=2, valid=1
+    # request_floor = 2 (10), valid = 1
+    dut.ui_in.value = 0b00000110   # [2]=valid, [1:0]=floor=2
+
     await ClockCycles(dut.clk, 1)
 
-    # IMPORTANT: clear request
+    # remove request
     dut.ui_in.value = 0
 
-    # ---------------- CHECK MOVE UP ----------------
-    await ClockCycles(dut.clk, 1)
+    # Wait for movement
+    await ClockCycles(dut.clk, 3)
 
-    uo = dut.uo_out.value
+    output = dut.uo_out.value.integer
 
-    moving_up = (uo >> 2) & 1
-    dut._log.info(f"Moving Up = {moving_up}")
+    current_floor = output & 0b11
+    moving_up = (output >> 2) & 1
 
-    assert moving_up == 1, "❌ Elevator should move up"
+    dut._log.info(f"Floor={current_floor}, moving_up={moving_up}")
 
-    # ---------------- NEXT STEP ----------------
-    await ClockCycles(dut.clk, 1)
+    assert moving_up == 1, "❌ Elevator should move UP"
 
-    floor = dut.uo_out.value & 0b11
-    dut._log.info(f"Floor after move = {floor}")
+    # Wait to reach floor
+    await ClockCycles(dut.clk, 3)
 
-    # ---------------- FINAL FLOOR ----------------
-    await ClockCycles(dut.clk, 2)
+    output = dut.uo_out.value.integer
+    current_floor = output & 0b11
 
-    floor = dut.uo_out.value & 0b11
-    dut._log.info(f"Final floor = {floor}")
+    dut._log.info(f"Final Floor={current_floor}")
 
-    assert floor == 2, "❌ Elevator did not reach floor 2"
+    assert current_floor == 2, "❌ Elevator did not reach floor 2"
 
     dut._log.info("✅ TEST PASSED")
